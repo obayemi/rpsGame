@@ -3,14 +3,20 @@
 #![warn(clippy::nursery)]
 #![allow(clippy::needless_pass_by_value)]
 
+use std::time::Duration;
+
 use bevy::{
     core_pipeline::bloom::BloomSettings,
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
+    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     utils::HashMap,
 };
 use bevy_hanabi::prelude::*;
+#[cfg(feature = "debug")]
+use bevy_inspector_egui::{quick::WorldInspectorPlugin, DefaultInspectorConfigPlugin};
 use bevy_trauma_shake::{Shake, TraumaEvent, TraumaPlugin};
+use bevy_tweening::{lens::TransformPositionLens, Animator, EaseFunction, Tween, TweeningPlugin};
 use rand::seq::SliceRandom;
 
 fn setup_camera(mut commands: Commands) {
@@ -24,12 +30,13 @@ fn setup_camera(mut commands: Commands) {
             tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
             ..default()
         },
-        BloomSettings {
-            high_pass_frequency: 0.01,
-            intensity: 0.2,
-            low_frequency_boost: 1.0,
-            ..Default::default()
-        }, // 3. Enable bloom for the camera
+        BloomSettings::NATURAL,
+        // BloomSettings {
+        //     high_pass_frequency: 0.01,
+        //     intensity: 0.2,
+        //     low_frequency_boost: 1.0,
+        //     ..Default::default()
+        // }, // 3. Enable bloom for the camera
         Shake::default(),
     ));
 }
@@ -57,7 +64,7 @@ impl AnimationIndices {
     }
 }
 
-#[derive(Component, Debug, Eq, Hash, PartialEq, Copy, Clone)]
+#[derive(Component, Reflect, Debug, Eq, Hash, PartialEq, Copy, Clone)]
 enum Hand {
     Rock,
     Paper,
@@ -71,6 +78,7 @@ impl Hand {
             .choose(&mut rand::thread_rng())
             .unwrap()
     }
+
     const fn cycle(self) -> Self {
         use Hand::{Paper, Rock, Scissors};
         match self {
@@ -81,7 +89,7 @@ impl Hand {
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Component, Reflect, Deref, DerefMut)]
 struct AnimationTimer(Timer);
 
 impl AnimationTimer {
@@ -140,7 +148,7 @@ fn spawn_hand(mut commands: Commands, hand_animations: Res<HandAnimations>) {
 
     commands.spawn((
         SpriteBundle {
-            transform: Transform::from_scale(Vec3::splat(6.0)),
+            transform: Transform::from_xyz(-100.0, 0.0, 0.0).with_scale(Vec3::splat(6.0)),
             texture: texture.clone(),
             ..default()
         },
@@ -150,7 +158,26 @@ fn spawn_hand(mut commands: Commands, hand_animations: Res<HandAnimations>) {
         },
         indices.clone(),
         AnimationTimer::repeating(0.25),
-        Hand::Rock,
+        Name::new("Hand"),
+        Bouncy::new(0.5),
+        hand,
+    ));
+
+    let hand = Hand::random();
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_xyz(100.0, 0.0, 0.0).with_scale(Vec3::splat(6.0)),
+            texture: texture.clone(),
+            ..default()
+        },
+        TextureAtlas {
+            layout: layout.clone(),
+            index: indices.first,
+        },
+        indices.clone(),
+        AnimationTimer::repeating(0.25),
+        Name::new("Other Hand"),
+        hand,
     ));
 }
 
@@ -161,7 +188,6 @@ fn change_hand(
         Option<&mut EffectSpawner>,
         &mut Hand,
     )>,
-    animations: Res<HandAnimations>,
     input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     hana: Res<HanabiThing>,
@@ -179,9 +205,6 @@ fn change_hand(
                 ));
             }
             *hand = hand.cycle();
-
-            let (new_image, _, _) = &animations.map[&hand.clone()];
-            *image = new_image.clone();
         }
     }
 }
@@ -239,30 +262,148 @@ impl FromWorld for HanabiThing {
             .render(ColorOverLifetimeModifier { gradient })
             .render(size);
 
-        let effect_handle = effects.add(effect);
-
         Self {
-            boom: effect_handle,
+            boom: effects.add(effect),
         }
     }
 }
 
+#[derive(Component, Deref, DerefMut)]
+struct Bouncy(Timer);
+
+impl Bouncy {
+    fn new(duration: f32) -> Self {
+        Self(Timer::from_seconds(duration, TimerMode::Repeating))
+    }
+}
+
+fn bounce(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Transform, &mut Bouncy)>,
+) {
+    for (entity, mut transform, mut timer) in &mut query.iter_mut() {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            println!("Bounce!");
+        }
+    }
+}
+
+fn sync_hand_animation(
+    mut query: Query<(&Hand, &mut Handle<Image>), Changed<Hand>>,
+    animations: Res<HandAnimations>,
+) {
+    for (hand, mut texture) in &mut query.iter_mut() {
+        *texture = animations.map[hand].0.clone();
+    }
+}
+
+#[derive(Component, Reflect)]
+struct HandCannon;
+
+#[derive(Component, Reflect, Deref, DerefMut)]
+struct HandCannonTimer(Timer);
+
+fn spawn_hand_cannon(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let mesh = Mesh2dHandle(meshes.add(Rectangle::new(50.0, 100.0)));
+    let color = Color::srgb(0.8, 0.5, 0.5);
+    commands.spawn((
+        MaterialMesh2dBundle {
+            mesh,
+            material: materials.add(color),
+            transform: Transform::from_xyz(
+                // Distribute shapes from -X_EXTENT/2 to +X_EXTENT/2.
+                0.0, 0.0, 0.0,
+            ),
+            ..default()
+        },
+        HandCannon,
+        // HandCannonTimer(Timer::from_seconds(1.0, TimerMode::Repeating)),
+    ));
+}
+
+fn manual_fire(
+    input: Res<ButtonInput<KeyCode>>,
+    query: Query<(Entity, &Transform), With<HandCannon>>,
+    mut commands: Commands,
+) {
+    if input.just_pressed(KeyCode::KeyW) {
+        for (entity, transform) in &mut query.iter() {
+            let tween = Tween::new(
+                EaseFunction::QuadraticInOut,
+                Duration::from_millis(200),
+                TransformPositionLens {
+                    start: transform.translation,
+                    end: transform.translation + Vec3::new(0.0, 100.0, 0.0),
+                },
+            );
+            commands.entity(entity).insert(Animator::new(tween));
+        }
+    }
+    if input.just_pressed(KeyCode::KeyS) {
+        for (entity, transform) in &mut query.iter() {
+            let tween = Tween::new(
+                EaseFunction::QuadraticInOut,
+                Duration::from_millis(200),
+                TransformPositionLens {
+                    start: transform.translation,
+                    end: transform.translation + Vec3::new(0.0, -100.0, 0.0),
+                },
+            );
+            commands.entity(entity).insert(Animator::new(tween));
+            // transform.translation.y += 100.0;
+        }
+    }
+}
+
+fn ui_things(
+    input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    mut exit: EventWriter<AppExit>,
+) {
+    if input.any_just_pressed([KeyCode::Escape, KeyCode::KeyQ]) {
+        exit.send(AppExit::Success);
+    }
+}
+
+use clap::{ArgAction, Parser};
+/// Thing
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, action = ArgAction::SetTrue)]
+    debug: bool,
+}
+
 fn main() {
+    let args = Args::parse();
     App::new()
         .add_plugins((
             DefaultPlugins.set(ImagePlugin::default_nearest()),
-            FrameTimeDiagnosticsPlugin,
-            // Adds a system that prints diagnostics to the console
-            LogDiagnosticsPlugin::default(),
+            // FrameTimeDiagnosticsPlugin,
+            // LogDiagnosticsPlugin::default(),
             HanabiPlugin,
             TraumaPlugin,
+            #[cfg(feature = "debug")]
+            (WorldInspectorPlugin::new()),
+            TweeningPlugin,
         ))
+        .register_type::<Hand>()
+        .register_type::<AnimationTimer>()
+        .register_type::<Image>()
         .init_resource::<HandAnimations>()
         .init_resource::<HanabiThing>()
         .add_systems(Startup, setup_camera)
+        .add_systems(Update, ui_things)
         .add_systems(Startup, spawn_hand)
+        .add_systems(Startup, spawn_hand_cannon)
         .add_systems(Update, animate_sprites)
-        .add_systems(Update, change_hand)
-        // .add_systems(Update, move_player)
+        .add_systems(Update, (change_hand, sync_hand_animation))
+        .add_systems(Update, manual_fire)
         .run();
 }
