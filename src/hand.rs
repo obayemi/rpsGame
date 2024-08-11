@@ -13,7 +13,7 @@ use bevy_trauma_shake::TraumaEvent;
 use rand::seq::SliceRandom;
 
 use crate::{
-    animations::{AnimationIndices, AnimationTimer},
+    animations::{AnimatableSpriteBundle, AnimationIndices, AnimationTimer},
     HanabiThing,
 };
 
@@ -134,40 +134,44 @@ fn change_hand(
     }
 }
 
+#[derive(Bundle)]
+struct HandBundle {
+    hand: Hand,
+    sprite: AnimatableSpriteBundle,
+}
+
 fn spawn_hand(mut commands: Commands, hand_animations: Res<HandAnimations>) {
     let hand = Hand::random();
     let (texture, layout, indices) = &hand_animations.map[&hand];
 
     commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(-100.0, 0.0, 0.0).with_scale(Vec3::splat(6.0)),
-            texture: texture.clone(),
-            ..default()
-        },
-        TextureAtlas {
-            layout: layout.clone(),
-            index: indices.first,
-        },
-        indices.clone(),
-        AnimationTimer::repeating(0.25),
         Name::new("Hand"),
-        hand,
+        HandBundle {
+            hand,
+            sprite: AnimatableSpriteBundle::new(
+                Vec3::new(-100.0, 0.0, 0.0),
+                Vec3::splat(6.0),
+                texture.clone(),
+                layout.clone(),
+                indices.clone(),
+                0.25,
+            ),
+        },
     ));
 
     let hand = Hand::random();
     commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(100.0, 0.0, 0.0).with_scale(Vec3::splat(6.0)),
-            texture: texture.clone(),
-            ..default()
-        },
-        TextureAtlas {
-            layout: layout.clone(),
-            index: indices.first,
-        },
-        indices.clone(),
-        AnimationTimer::repeating(0.25),
         Name::new("Other Hand"),
-        hand,
+        HandBundle {
+            hand,
+            sprite: AnimatableSpriteBundle::new(
+                Vec3::new(100.0, 0.0, 0.0),
+                Vec3::splat(6.0),
+                texture.clone(),
+                layout.clone(),
+                indices.clone(),
+                0.25,
+            ),
+        },
     ));
 }

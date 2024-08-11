@@ -43,3 +43,37 @@ impl AnimationTimer {
         Self(Timer::from_seconds(duration, TimerMode::Repeating))
     }
 }
+
+#[derive(Bundle)]
+pub struct AnimatableSpriteBundle {
+    pub sprite: SpriteBundle,
+    pub texture_atlas: TextureAtlas,
+    pub sprite_indices: AnimationIndices,
+    pub timer: AnimationTimer,
+}
+
+impl AnimatableSpriteBundle {
+    pub fn new(
+        position: Vec3,
+        scale: Vec3,
+        texture: Handle<Image>,
+        layout: Handle<TextureAtlasLayout>,
+        indices: AnimationIndices,
+        frame_time: f32,
+    ) -> Self {
+        Self {
+            sprite: SpriteBundle {
+                transform: Transform::from_xyz(position.x, position.y, position.z)
+                    .with_scale(scale),
+                texture,
+                ..default()
+            },
+            texture_atlas: TextureAtlas {
+                layout,
+                index: indices.first,
+            },
+            sprite_indices: indices,
+            timer: AnimationTimer::repeating(frame_time),
+        }
+    }
+}

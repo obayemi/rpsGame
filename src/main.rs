@@ -117,7 +117,7 @@ fn manual_fire(
     mut commands: Commands,
 ) {
     let ease_function = EaseFunction::ExponentialInOut;
-    if input.just_pressed(KeyCode::KeyW) {
+    if input.just_pressed(KeyCode::ArrowUp) {
         for (entity, transform) in &mut query.iter() {
             let tween = Tween::new(
                 ease_function,
@@ -130,7 +130,8 @@ fn manual_fire(
             commands.entity(entity).insert(Animator::new(tween));
         }
     }
-    if input.just_pressed(KeyCode::KeyS) {
+
+    if input.just_pressed(KeyCode::ArrowDown) {
         for (entity, transform) in &mut query.iter() {
             let tween = Tween::new(
                 ease_function,
@@ -138,6 +139,35 @@ fn manual_fire(
                 TransformPositionLens {
                     start: transform.translation,
                     end: transform.translation + Vec3::new(0.0, -100.0, 0.0),
+                },
+            );
+            commands.entity(entity).insert(Animator::new(tween));
+            // transform.translation.y += 100.0;
+        }
+    }
+
+    if input.just_pressed(KeyCode::ArrowLeft) {
+        for (entity, transform) in &mut query.iter() {
+            let tween = Tween::new(
+                ease_function,
+                Duration::from_millis(200),
+                TransformPositionLens {
+                    start: transform.translation,
+                    end: transform.translation + Vec3::new(-100.0, 0.0, 0.0),
+                },
+            );
+            commands.entity(entity).insert(Animator::new(tween));
+        }
+    }
+
+    if input.just_pressed(KeyCode::ArrowRight) {
+        for (entity, transform) in &mut query.iter() {
+            let tween = Tween::new(
+                ease_function,
+                Duration::from_millis(200),
+                TransformPositionLens {
+                    start: transform.translation,
+                    end: transform.translation + Vec3::new(100.0, 0.0, 0.0),
                 },
             );
             commands.entity(entity).insert(Animator::new(tween));
