@@ -8,11 +8,13 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_framepace",
  "bevy_hanabi",
  "bevy_trauma_shake",
  "bevy_tweening",
  "blake3",
  "clap",
+ "iyes_perf_ui",
  "rand",
 ]
 
@@ -387,6 +389,7 @@ version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8ece0d8dde51890fb52dcba5b04fd1c657617a4022908c327b2d6e83d173a32"
 dependencies = [
+ "bevy_dylib",
  "bevy_internal",
 ]
 
@@ -639,6 +642,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_dylib"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "521e5c295b80798b7a886aab4e54d0a92ea1780aa9586cdb17ded1fe34f36504"
+dependencies = [
+ "bevy_internal",
+]
+
+[[package]]
 name = "bevy_ecs"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -701,6 +713,25 @@ checksum = "7a20ec101b103f430481112591e280a8fc3f2db6741579f885595372073b749b"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
+]
+
+[[package]]
+name = "bevy_framepace"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fa5f7d858e66d0f4c4fe3e1a678da440037ce383c4c51bff3c1fa06a121ebc0"
+dependencies = [
+ "bevy_app",
+ "bevy_diagnostic",
+ "bevy_ecs",
+ "bevy_log",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_time",
+ "bevy_utils",
+ "bevy_window",
+ "bevy_winit",
+ "spin_sleep",
 ]
 
 [[package]]
@@ -2548,6 +2579,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
+name = "iyes_perf_ui"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c7015cab699e6224bd5519854cff04280dddab4257090f4720e85d1095e66c8"
+dependencies = [
+ "bevy",
+ "num-traits",
+]
+
+[[package]]
 name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3796,6 +3837,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd538fb6910ac1099850255cf94a94df6551fbdd602454387d0adb2d1ca6dead"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "spin_sleep"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64bd7227d85bfd1b8df51e0d83da36d9baaee85eb75730386ef8e3ab6f2a2ea3"
+dependencies = [
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
