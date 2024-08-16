@@ -1,3 +1,7 @@
+use crate::{
+    animations::{AnimatableSpriteBundle, AnimationIndices, AnimationTimer},
+    particles::HanabiThing,
+};
 use bevy::{
     app::{App, Plugin, Startup, Update},
     ecs::{
@@ -12,18 +16,13 @@ use bevy_hanabi::{CompiledParticleEffect, EffectSpawner, ParticleEffect};
 use bevy_trauma_shake::TraumaEvent;
 use rand::seq::SliceRandom;
 
-use crate::{
-    animations::{AnimatableSpriteBundle, AnimationIndices, AnimationTimer},
-    HanabiThing,
-};
-
 pub struct HandPlugin;
 
 impl Plugin for HandPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Hand>()
             .init_resource::<HandAnimations>()
-            .add_systems(Startup, spawn_hand)
+            // .add_systems(Startup, spawn_hand)
             .add_systems(Update, (change_hand, sync_hand_animation));
     }
 }
@@ -36,7 +35,7 @@ pub enum Hand {
 }
 
 impl Hand {
-    fn random() -> Self {
+    pub fn random() -> Self {
         use Hand::{Paper, Rock, Scissors};
         *[Rock, Paper, Scissors]
             .choose(&mut rand::thread_rng())
@@ -54,15 +53,19 @@ impl Hand {
 }
 
 #[derive(Resource)]
-struct HandAnimations {
+pub struct HandAnimations {
     map: HashMap<Hand, (Handle<Image>, Handle<TextureAtlasLayout>, AnimationIndices)>,
 }
 
 impl HandAnimations {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             map: HashMap::default(),
         }
+    }
+
+    pub fn get(&self, hand: Hand) -> (Handle<Image>, Handle<TextureAtlasLayout>, AnimationIndices) {
+        self.map[&hand].clone()
     }
 }
 
@@ -125,7 +128,7 @@ fn change_hand(
                 effects.reset();
             } else {
                 commands.entity(entity).insert((
-                    ParticleEffect::new(hana.boom.clone()).with_z_layer_2d(Some(-0.1)),
+                    hana.effect().with_z_layer_2d(Some(-0.1)),
                     CompiledParticleEffect::default(),
                 ));
             }
@@ -135,43 +138,43 @@ fn change_hand(
 }
 
 #[derive(Bundle)]
-struct HandBundle {
-    hand: Hand,
-    sprite: AnimatableSpriteBundle,
+pub struct HandBundle {
+    pub hand: Hand,
+    pub sprite: AnimatableSpriteBundle,
 }
 
 fn spawn_hand(mut commands: Commands, hand_animations: Res<HandAnimations>) {
-    let hand = Hand::random();
-    let (texture, layout, indices) = &hand_animations.map[&hand];
-
-    commands.spawn((
-        Name::new("Hand"),
-        HandBundle {
-            hand,
-            sprite: AnimatableSpriteBundle::new(
-                Vec3::new(-100.0, 0.0, 0.0),
-                Vec3::splat(6.0),
-                texture.clone(),
-                layout.clone(),
-                indices.clone(),
-                0.25,
-            ),
-        },
-    ));
-
-    let hand = Hand::random();
-    commands.spawn((
-        Name::new("Other Hand"),
-        HandBundle {
-            hand,
-            sprite: AnimatableSpriteBundle::new(
-                Vec3::new(100.0, 0.0, 0.0),
-                Vec3::splat(6.0),
-                texture.clone(),
-                layout.clone(),
-                indices.clone(),
-                0.25,
-            ),
-        },
-    ));
+    // let hand = Hand::random();
+    // let (texture, layout, indices) = &hand_animations.map[&hand];
+    //
+    // commands.spawn((
+    //     Name::new("Hand"),
+    //     HandBundle {
+    //         hand,
+    //         sprite: AnimatableSpriteBundle::new(
+    //             Vec3::new(-100.0, 0.0, 0.0),
+    //             Vec3::splat(6.0),
+    //             texture.clone(),
+    //             layout.clone(),
+    //             indices.clone(),
+    //             0.25,
+    //         ),
+    //     },
+    // ));
+    //
+    // let hand = Hand::random();
+    // commands.spawn((
+    //     Name::new("Other Hand"),
+    //     HandBundle {
+    //         hand,
+    //         sprite: AnimatableSpriteBundle::new(
+    //             Vec3::new(100.0, 0.0, 0.0),
+    //             Vec3::splat(6.0),
+    //             texture.clone(),
+    //             layout.clone(),
+    //             indices.clone(),
+    //             0.25,
+    //         ),
+    //     },
+    // ));
 }
