@@ -1,18 +1,21 @@
 use crate::{
-    animations::{AnimatableSpriteBundle, AnimationIndices, AnimationTimer},
+    animations::{AnimatableSpriteBundle, AnimationIndices},
     particles::HanabiThing,
 };
 use bevy::{
-    app::{App, Plugin, Startup, Update},
+    app::{App, Plugin, Update},
+    asset::{AssetServer, Assets, Handle},
     ecs::{
         component::Component,
         system::{Commands, Resource},
     },
-    prelude::*,
+    input::ButtonInput,
+    math::UVec2,
+    prelude::{Bundle, Changed, Entity, EventWriter, FromWorld, Image, KeyCode, Query, Res, World},
     reflect::Reflect,
-    utils::HashMap,
+    sprite::TextureAtlasLayout,
 };
-use bevy_hanabi::{CompiledParticleEffect, EffectSpawner, ParticleEffect};
+use bevy_hanabi::{CompiledParticleEffect, EffectSpawner};
 use bevy_trauma_shake::TraumaEvent;
 use rand::seq::SliceRandom;
 
@@ -52,26 +55,37 @@ impl Hand {
     }
 }
 
-#[derive(Resource)]
+/// assumes that all hand animations are 4 frames spritesheets of 32/32 pixels
+#[derive(Resource, Reflect)]
 pub struct HandAnimations {
-    map: HashMap<Hand, (Handle<Image>, Handle<TextureAtlasLayout>, AnimationIndices)>,
+    rock: Handle<Image>,
+    paper: Handle<Image>,
+    scissors: Handle<Image>,
+    atlas_layout: Handle<TextureAtlasLayout>,
+    indices: AnimationIndices,
 }
 
 impl HandAnimations {
-    pub fn new() -> Self {
-        Self {
-            map: HashMap::default(),
+    pub fn get(&self, hand: Hand) -> Handle<Image> {
+        use Hand::*;
+        match hand {
+            Rock => self.rock.clone(),
+            Paper => self.paper.clone(),
+            Scissors => self.scissors.clone(),
         }
     }
 
-    pub fn get(&self, hand: Hand) -> (Handle<Image>, Handle<TextureAtlasLayout>, AnimationIndices) {
-        self.map[&hand].clone()
+    pub fn layout(&self) -> Handle<TextureAtlasLayout> {
+        self.atlas_layout.clone()
+    }
+
+    pub fn indices(&self) -> AnimationIndices {
+        self.indices.clone()
     }
 }
 
 impl FromWorld for HandAnimations {
     fn from_world(world: &mut World) -> Self {
-        let mut animations = Self::new();
         let asset_server = world.resource::<AssetServer>();
 
         let rock_texture: Handle<Image> = asset_server.load("hands/rock.png");
@@ -84,19 +98,13 @@ impl FromWorld for HandAnimations {
         let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 4, 1, None, None);
         let atlas_layout = texture_atlas_layout.add(layout);
 
-        animations.map.insert(
-            Hand::Rock,
-            (rock_texture, atlas_layout.clone(), indices.clone()),
-        );
-        animations.map.insert(
-            Hand::Paper,
-            (paper_texture, atlas_layout.clone(), indices.clone()),
-        );
-        animations
-            .map
-            .insert(Hand::Scissors, (scissors_texture, atlas_layout, indices));
-
-        animations
+        Self {
+            rock: rock_texture,
+            paper: paper_texture,
+            scissors: scissors_texture,
+            atlas_layout,
+            indices,
+        }
     }
 }
 
@@ -105,17 +113,12 @@ fn sync_hand_animation(
     animations: Res<HandAnimations>,
 ) {
     for (hand, mut texture) in &mut query.iter_mut() {
-        *texture = animations.map[hand].0.clone();
+        *texture = animations.get(*hand).clone();
     }
 }
 
 fn change_hand(
-    mut query: Query<(
-        Entity,
-        &mut Handle<Image>,
-        Option<&mut EffectSpawner>,
-        &mut Hand,
-    )>,
+    mut query: Query<(Entity, Option<&mut EffectSpawner>, &mut Hand)>,
     input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     hana: Res<HanabiThing>,
@@ -123,7 +126,7 @@ fn change_hand(
 ) {
     if input.just_pressed(KeyCode::KeyA) {
         trauma.send(0.3.into());
-        for (entity, mut image, effects, mut hand) in &mut query.iter_mut() {
+        for (entity, effects, mut hand) in &mut query.iter_mut() {
             if let Some(mut effects) = effects {
                 effects.reset();
             } else {
@@ -141,40 +144,4 @@ fn change_hand(
 pub struct HandBundle {
     pub hand: Hand,
     pub sprite: AnimatableSpriteBundle,
-}
-
-fn spawn_hand(mut commands: Commands, hand_animations: Res<HandAnimations>) {
-    // let hand = Hand::random();
-    // let (texture, layout, indices) = &hand_animations.map[&hand];
-    //
-    // commands.spawn((
-    //     Name::new("Hand"),
-    //     HandBundle {
-    //         hand,
-    //         sprite: AnimatableSpriteBundle::new(
-    //             Vec3::new(-100.0, 0.0, 0.0),
-    //             Vec3::splat(6.0),
-    //             texture.clone(),
-    //             layout.clone(),
-    //             indices.clone(),
-    //             0.25,
-    //         ),
-    //     },
-    // ));
-    //
-    // let hand = Hand::random();
-    // commands.spawn((
-    //     Name::new("Other Hand"),
-    //     HandBundle {
-    //         hand,
-    //         sprite: AnimatableSpriteBundle::new(
-    //             Vec3::new(100.0, 0.0, 0.0),
-    //             Vec3::splat(6.0),
-    //             texture.clone(),
-    //             layout.clone(),
-    //             indices.clone(),
-    //             0.25,
-    //         ),
-    //     },
-    // ));
 }

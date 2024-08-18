@@ -13,8 +13,13 @@ codegen-backend = true
 [profile.dev]
 codegen-backend = "cranelift"
 
+[profile.dev-web]
+inherits = "dev"
+codegen-backend = "llvm"
+
 [profile.dev.package."*"]
 codegen-backend = "llvm"
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"
+rustflags = ["--cfg=web_sys_unstable_apis"]

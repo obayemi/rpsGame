@@ -4,7 +4,7 @@ use bevy::{
     ecs::system::Commands,
     render::camera::Camera,
 };
-use bevy_trauma_shake::Shake;
+use bevy_trauma_shake::{Shake, TraumaPlugin};
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn((
@@ -25,6 +25,7 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_camera);
+        app.add_plugins(TraumaPlugin)
+            .add_systems(Startup, setup_camera);
     }
 }

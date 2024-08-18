@@ -1,6 +1,14 @@
-use bevy::prelude::*;
+use bevy::{
+    app::{App, Update},
+    asset::Handle,
+    math::Vec3,
+    prelude::{Bundle, Component, Deref, DerefMut, Image, Plugin, Query, Res, Transform},
+    reflect::Reflect,
+    sprite::{SpriteBundle, TextureAtlas, TextureAtlasLayout},
+    time::{Time, Timer, TimerMode},
+};
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Reflect, Clone, Debug)]
 pub struct AnimationIndices {
     pub first: usize,
     pub last: usize,
@@ -66,7 +74,7 @@ impl AnimatableSpriteBundle {
                 transform: Transform::from_xyz(position.x, position.y, position.z)
                     .with_scale(scale),
                 texture,
-                ..default()
+                ..Default::default()
             },
             texture_atlas: TextureAtlas {
                 layout,
@@ -75,5 +83,15 @@ impl AnimatableSpriteBundle {
             sprite_indices: indices,
             timer: AnimationTimer::repeating(frame_time),
         }
+    }
+}
+
+pub struct AnimationsPlugin;
+
+impl Plugin for AnimationsPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<AnimationTimer>()
+            .register_type::<Image>()
+            .add_systems(Update, animate_sprites);
     }
 }
